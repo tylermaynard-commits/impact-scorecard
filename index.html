@@ -81,6 +81,14 @@
   .star-btn.filled { color: #F59E0B; }
   .cat-mini-bar { height: 3px; background: var(--surface2); }
   .cat-mini-fill { height: 100%; transition: width 0.3s ease; }
+
+  /* Text input fields inside criteria */
+  .criterion-input-wrap { margin-top: 8px; }
+  .criterion-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); outline: none; transition: border-color 0.15s; resize: none; min-height: 32px; }
+  .criterion-input:focus { border-color: var(--accent-mid); }
+  .criterion-input::placeholder { color: var(--text-3); }
+  .criterion-input-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+
   .lead-investor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
   .lead-investor-inner { padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
   .lead-investor-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
@@ -100,14 +108,14 @@
   .modal-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; margin-bottom: 6px; }
   .modal-sub { font-size: 13px; color: var(--text-2); margin-bottom: 20px; }
   .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.15s; margin-bottom: 8px; }
-  .modal-input:focus { border-bottom-color: var(--accent-mid); }
+  .modal-input:focus { border-color: var(--accent-mid); }
   .modal-select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; margin-bottom: 8px; cursor: pointer; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-  .export-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; color: var(--text-2); white-space: pre-wrap; max-height: 260px; overflow-y: auto; margin-bottom: 16px; }
-  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .export-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; color: var(--text-2); white-space: pre-wrap; max-height: 320px; overflow-y: auto; margin-bottom: 16px; }
+  .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 28px; }
   .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
   .summary-card-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
-  .summary-card-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; }
+  .summary-card-val { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; }
   .summary-card-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
   .divider { height: 1px; background: var(--border); margin: 24px 0; }
   .scorer-tag { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-top: 3px; }
@@ -180,7 +188,7 @@
 
 <!-- EXPORT MODAL -->
 <div class="modal-backdrop hidden" id="export-modal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:560px;">
     <div class="modal-title">Export scorecard</div>
     <div class="modal-sub">Copy this summary for your impact report.</div>
     <div class="export-box" id="export-content"></div>
@@ -194,46 +202,77 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ── SUPABASE CONFIG ───────────────────────────────────────────────
 const SUPABASE_URL = 'https://wpyvpohjdjqvpuvaedqn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zEY_CTwpIAunwg0maKsIKw_wg3svbPm';
-// ─────────────────────────────────────────────────────────────────
 
+// ── SCORING CATEGORIES ────────────────────────────────────────────
+// Weights updated to still total 100 with the new Acadian Contribution category
 const CATS = [
   {
-    id: "mission", name: "Mission alignment", weight: 30,
+    id: "mission", name: "Mission alignment", weight: 25,
     color: "#2D6A4F", fillColor: "#52B788",
     criteria: [
-      { label: "Core product directly enables a measurable positive outcome", hint: "e.g. reduces waste, improves equity, saves time at scale" },
       { label: "Impact is embedded in the business model, not a side program", hint: "Revenue growth = impact growth" },
-      { label: "Founder(s) have explicit mission-driven thesis and track record", hint: "" }
+      { label: "Founder(s) have explicit mission-driven thesis and track record", hint: "" },
+      { label: "Product addresses a clearly defined social or environmental problem", hint: "Problem is well scoped, evidence-based, and material" }
     ]
   },
   {
-    id: "workforce", name: "Workforce & culture", weight: 25,
+    id: "workforce", name: "Workforce & culture", weight: 20,
     color: "#4A1D96", fillColor: "#7C3AED",
     criteria: [
-      { label: "Responsible AI practices — fairness, transparency & bias mitigation", hint: "Uses AI responsibly: explainability, bias audits, ethical review process" },
+      { label: "Responsible AI practices — fairness, transparency & bias mitigation", hint: "Explainability, bias audits, ethical review process in place" },
       { label: "Fair compensation & equity access for all employees", hint: "Includes early employees, not just executives" },
-      { label: "Employee satisfaction / retention above industry average", hint: "eNPS, Glassdoor score, or internal pulse data" }
+      { label: "Employee satisfaction / retention above industry average", hint: "eNPS, Glassdoor score, or internal pulse data" },
+      {
+        label: "Team diversity — founding team composition & FTE gender/ethnicity balance",
+        hint: "Diverse founding team; tracks and reports gender & ethnicity across FTEs",
+        hasInput: true, inputPlaceholder: "Notes on team diversity (e.g. % women, underrepresented founders…)"
+      }
     ]
   },
   {
     id: "customer", name: "Customer impact", weight: 25,
     color: "#9B2335", fillColor: "#DC2626",
     criteria: [
-      { label: "Measurable, documented positive outcome for customers", hint: "Time saved, cost reduced, access unlocked — with data" },
+      {
+        label: "Quantified customer outcomes — hours saved, productivity gains, revenue impact",
+        hint: "Concrete metrics: time decrease %, $ revenue impact, productivity improvement",
+        hasInput: true, inputPlaceholder: "e.g. avg 4 hrs/week saved per user, $12K revenue impact per customer…"
+      },
       { label: "Customers in underserved or high-need segments", hint: "SMBs, nonprofits, healthcare, education, government" },
-      { label: "Low / no harmful externalities or dark patterns", hint: "Pricing transparency, no addictive engagement mechanics" }
+      { label: "Low / no harmful externalities or dark patterns", hint: "Pricing transparency, no addictive engagement mechanics" },
+      { label: "Human review mechanisms & auditability / explainability", hint: "Users can understand, contest, and override AI-driven decisions" }
     ]
   },
   {
-    id: "governance", name: "Governance & transparency", weight: 20,
+    id: "governance", name: "Governance & transparency", weight: 15,
     color: "#1E3A5F", fillColor: "#2563EB",
     criteria: [
       { label: "Clear impact metrics tracked and shared with investors", hint: "At least annual cadence" },
       { label: "Responsible data practices & privacy policy", hint: "GDPR/CCPA compliant, no data selling" },
-      { label: "Independent board or advisory perspective on ethics", hint: "Someone not on cap table weighing in" }
+      { label: "Model monitoring & ongoing AI risk management", hint: "Active monitoring for model drift, bias, and unintended outputs" }
+    ]
+  },
+  {
+    id: "acadian", name: "Acadian contribution", weight: 15,
+    color: "#92400E", fillColor: "#D97706",
+    criteria: [
+      {
+        label: "Capital deployed",
+        hint: "Total capital committed by Acadian Ventures",
+        hasInput: true, inputPlaceholder: "e.g. $500K seed, $1.2M follow-on…"
+      },
+      {
+        label: "Founder support provided",
+        hint: "Recruiting, strategy, ops, fundraising support given by the team",
+        hasInput: true, inputPlaceholder: "e.g. hired CTO, intro'd 3 enterprise customers, led bridge round…"
+      },
+      {
+        label: "Customer introductions made",
+        hint: "Direct intros from Acadian network that converted or are in pipeline",
+        hasInput: true, inputPlaceholder: "e.g. 5 intros, 2 converted to paying customers ($80K ARR)…"
+      }
     ]
   }
 ];
@@ -247,7 +286,7 @@ const INVESTOR_COLORS = {
 let db = null;
 let companies = [];
 let activeId = null;
-let openCats = { mission: true, workforce: true, customer: true, governance: true };
+let openCats = { mission: true, workforce: true, customer: true, governance: true, acadian: true };
 
 async function init() {
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -261,14 +300,12 @@ async function init() {
 
 async function loadCompanies() {
   const { data, error } = await db.from('companies').select('*').order('updated_at');
-  if (error) { showToast('Could not load data: ' + error.message); return; }
+  if (error) { showToast('Could not load: ' + error.message); return; }
   companies = (data || []).map(r => r.data);
 }
 
 async function upsertCompany(company) {
-  const { error } = await db.from('companies').upsert({
-    id: company.id, data: company, updated_at: new Date().toISOString()
-  });
+  const { error } = await db.from('companies').upsert({ id: company.id, data: company, updated_at: new Date().toISOString() });
   if (error) showToast('Save error: ' + error.message);
 }
 
@@ -291,8 +328,7 @@ function subscribeRealtime() {
         showToast('Updated by teammate ↺');
       }
       render();
-    })
-    .subscribe();
+    }).subscribe();
 }
 
 function showToast(msg) {
@@ -304,9 +340,12 @@ function showToast(msg) {
 function getCompany(id) { return companies.find(c => c.id === id); }
 
 function initCompany(name, stage, year, investor) {
-  const scores = {};
-  CATS.forEach(cat => cat.criteria.forEach((_, i) => { scores[`${cat.id}-${i}`] = 0; }));
-  return { id: Date.now().toString(), name, stage: stage||'', year: year||'', leadInvestor: investor||'', scores, lastScoredBy: 'Team', updatedAt: Date.now() };
+  const scores = {}; const notes = {};
+  CATS.forEach(cat => cat.criteria.forEach((cr, i) => {
+    scores[`${cat.id}-${i}`] = 0;
+    if (cr.hasInput) notes[`${cat.id}-${i}`] = '';
+  }));
+  return { id: Date.now().toString(), name, stage: stage||'', year: year||'', leadInvestor: investor||'', scores, notes, lastScoredBy: 'Team', updatedAt: Date.now() };
 }
 
 function avatarInitials(name) { return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join(''); }
@@ -348,17 +387,36 @@ function renderSidebar() {
 
 function renderScorecard() {
   const company = getCompany(activeId); if(!company) return;
+  if (!company.notes) company.notes = {};
   const score=calcScore(company); const grade=gradeInfo(score);
+
   const summaryCards = CATS.map(cat => {
     const cs=calcCatScore(company,cat);
-    return `<div class="summary-card"><div class="summary-card-label">${cat.name.split(' ')[0]}</div><div class="summary-card-val" style="color:${cat.color};">${cs}</div><div class="summary-card-sub">of ${cat.weight} pts</div></div>`;
+    return `<div class="summary-card">
+      <div class="summary-card-label">${cat.name.split(' ')[0]}</div>
+      <div class="summary-card-val" style="color:${cat.color};">${cs}</div>
+      <div class="summary-card-sub">of ${cat.weight} pts</div>
+    </div>`;
   }).join('');
+
   const catCards = CATS.map(cat => {
     const cs=calcCatScore(company,cat); const pctFill=Math.round((cs/cat.weight)*100); const isOpen=openCats[cat.id];
-    const criteriaHTML = cat.criteria.map((c,i) => {
+    const criteriaHTML = cat.criteria.map((cr,i) => {
       const val=company.scores[`${cat.id}-${i}`]||0;
       const stars=[1,2,3].map(n=>`<button class="star-btn ${val>=n?'filled':''}" onclick="setScore('${cat.id}',${i},${n})">★</button>`).join('');
-      return `<div class="criterion"><div class="criterion-text"><div class="criterion-label">${c.label}</div>${c.hint?`<div class="criterion-hint">${c.hint}</div>`:''}</div><div class="stars">${stars}</div></div>`;
+      const noteVal = (company.notes[`${cat.id}-${i}`]||'').replace(/"/g,'&quot;');
+      const inputHTML = cr.hasInput ? `<div class="criterion-input-wrap">
+        <div class="criterion-input-label">Notes / data</div>
+        <textarea class="criterion-input" rows="2" placeholder="${cr.inputPlaceholder||''}" onchange="setNote('${cat.id}',${i},this.value)">${noteVal}</textarea>
+      </div>` : '';
+      return `<div class="criterion">
+        <div class="criterion-text">
+          <div class="criterion-label">${cr.label}</div>
+          ${cr.hint?`<div class="criterion-hint">${cr.hint}</div>`:''}
+          ${inputHTML}
+        </div>
+        <div class="stars">${stars}</div>
+      </div>`;
     }).join('');
     return `<div class="cat-card ${isOpen?'open':''}" id="cat-${cat.id}">
       <div class="cat-mini-bar"><div class="cat-mini-fill" style="width:${pctFill}%;background:${cat.fillColor};"></div></div>
@@ -372,8 +430,10 @@ function renderScorecard() {
       <div class="cat-body ${isOpen?'':'hidden'}" id="cat-body-${cat.id}">${criteriaHTML}</div>
     </div>`;
   }).join('');
+
   const invOptions=['','Audrey','Thomas','Jason'].map(v=>`<option value="${v}" ${company.leadInvestor===v?'selected':''}>${v||'Unassigned'}</option>`).join('');
   const invStyle=company.leadInvestor&&INVESTOR_COLORS[company.leadInvestor]?`background:${INVESTOR_COLORS[company.leadInvestor].bg};color:${INVESTOR_COLORS[company.leadInvestor].color};`:'background:var(--surface2);color:var(--text-2);';
+
   document.getElementById('scorecard-view').innerHTML = `
     <div class="scorecard-top">
       <div style="flex:1;min-width:0;">
@@ -462,21 +522,45 @@ async function setScore(catId,idx,val) {
   c.lastScoredBy='Team'; c.updatedAt=Date.now();
   renderScorecard(); renderSidebar(); await upsertCompany(c); showToast('Score saved ✓');
 }
+
+let noteTimers={};
+function setNote(catId,idx,val) {
+  const c=getCompany(activeId); if(!c)return;
+  if(!c.notes) c.notes={};
+  c.notes[`${catId}-${idx}`]=val; c.updatedAt=Date.now();
+  const key=`${catId}-${idx}`;
+  clearTimeout(noteTimers[key]);
+  noteTimers[key]=setTimeout(()=>{ upsertCompany(c); showToast('Note saved ✓'); },1000);
+}
+
 function toggleCat(catId) {
   openCats[catId]=!openCats[catId];
   document.getElementById(`cat-${catId}`).classList.toggle('open',openCats[catId]);
   document.getElementById(`cat-body-${catId}`).classList.toggle('hidden',!openCats[catId]);
 }
+
 async function resetScores() {
   if(!confirm('Reset all scores for this company?'))return;
   const c=getCompany(activeId);
   CATS.forEach(cat=>cat.criteria.forEach((_,i)=>{c.scores[`${cat.id}-${i}`]=0;}));
   c.updatedAt=Date.now(); render(); await upsertCompany(c); showToast('Scores reset');
 }
+
 function openExport() {
   const c=getCompany(activeId); const score=calcScore(c); const grade=gradeInfo(score);
-  let lines=['IMPACT SCORECARD','━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',`Company:       ${c.name}`,`Stage:         ${c.stage||'N/A'}`,`Year:          ${c.year||'N/A'}`,`Lead investor: ${c.leadInvestor||'N/A'}`,`Total Score:   ${score}/100 — ${grade.label}`,''];
-  CATS.forEach(cat=>{lines.push(`${cat.name.toUpperCase()}: ${calcCatScore(c,cat)}/${cat.weight}`);cat.criteria.forEach((cr,i)=>{const s=c.scores[`${cat.id}-${i}`]||0;lines.push(`  ${'★'.repeat(s)}${'☆'.repeat(3-s)}  ${cr.label}`);});lines.push('');});
+  let lines=['IMPACT SCORECARD — ACADIAN VENTURES','━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    `Company:       ${c.name}`,`Stage:         ${c.stage||'N/A'}`,
+    `Year:          ${c.year||'N/A'}`,`Lead investor: ${c.leadInvestor||'N/A'}`,
+    `Total Score:   ${score}/100 — ${grade.label}`,``];
+  CATS.forEach(cat=>{
+    lines.push(`${cat.name.toUpperCase()}: ${calcCatScore(c,cat)}/${cat.weight}`);
+    cat.criteria.forEach((cr,i)=>{
+      const s=c.scores[`${cat.id}-${i}`]||0;
+      lines.push(`  ${'★'.repeat(s)}${'☆'.repeat(3-s)}  ${cr.label}`);
+      if(cr.hasInput && c.notes && c.notes[`${cat.id}-${i}`]) lines.push(`      → ${c.notes[`${cat.id}-${i}`]}`);
+    });
+    lines.push('');
+  });
   document.getElementById('export-content').textContent=lines.join('\n');
   document.getElementById('export-modal').classList.remove('hidden');
 }
