@@ -75,20 +75,17 @@
   .criterion-text { flex: 1; }
   .criterion-label { font-size: 13px; color: var(--text); line-height: 1.5; }
   .criterion-hint { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .criterion-input-wrap { margin-top: 8px; }
+  .criterion-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); outline: none; transition: border-color 0.15s; resize: none; min-height: 32px; }
+  .criterion-input:focus { border-color: var(--accent-mid); }
+  .criterion-input::placeholder { color: var(--text-3); }
+  .criterion-input-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
   .stars { display: flex; gap: 5px; flex-shrink: 0; padding-top: 2px; }
   .star-btn { background: none; border: none; cursor: pointer; font-size: 20px; line-height: 1; color: var(--border-strong); transition: color 0.1s, transform 0.1s; padding: 0 1px; }
   .star-btn:hover { transform: scale(1.2); }
   .star-btn.filled { color: #F59E0B; }
   .cat-mini-bar { height: 3px; background: var(--surface2); }
   .cat-mini-fill { height: 100%; transition: width 0.3s ease; }
-
-  /* Text input fields inside criteria */
-  .criterion-input-wrap { margin-top: 8px; }
-  .criterion-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); outline: none; transition: border-color 0.15s; resize: none; min-height: 32px; }
-  .criterion-input:focus { border-color: var(--accent-mid); }
-  .criterion-input::placeholder { color: var(--text-3); }
-  .criterion-input-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
-
   .lead-investor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
   .lead-investor-inner { padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
   .lead-investor-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
@@ -112,10 +109,10 @@
   .modal-select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; margin-bottom: 8px; cursor: pointer; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
   .export-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; color: var(--text-2); white-space: pre-wrap; max-height: 320px; overflow-y: auto; margin-bottom: 16px; }
-  .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 28px; }
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
   .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
   .summary-card-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
-  .summary-card-val { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; }
+  .summary-card-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; }
   .summary-card-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
   .divider { height: 1px; background: var(--border); margin: 24px 0; }
   .scorer-tag { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-top: 3px; }
@@ -205,11 +202,9 @@
 const SUPABASE_URL = 'https://wpyvpohjdjqvpuvaedqn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_zEY_CTwpIAunwg0maKsIKw_wg3svbPm';
 
-// ── SCORING CATEGORIES ────────────────────────────────────────────
-// Weights updated to still total 100 with the new Acadian Contribution category
 const CATS = [
   {
-    id: "mission", name: "Mission alignment", weight: 25,
+    id: "mission", name: "Mission alignment", weight: 30,
     color: "#2D6A4F", fillColor: "#52B788",
     criteria: [
       { label: "Impact is embedded in the business model, not a side program", hint: "Revenue growth = impact growth" },
@@ -218,61 +213,32 @@ const CATS = [
     ]
   },
   {
-    id: "workforce", name: "Workforce & culture", weight: 20,
+    id: "workforce", name: "Workforce & culture", weight: 25,
     color: "#4A1D96", fillColor: "#7C3AED",
     criteria: [
       { label: "Responsible AI practices — fairness, transparency & bias mitigation", hint: "Explainability, bias audits, ethical review process in place" },
       { label: "Fair compensation & equity access for all employees", hint: "Includes early employees, not just executives" },
       { label: "Employee satisfaction / retention above industry average", hint: "eNPS, Glassdoor score, or internal pulse data" },
-      {
-        label: "Team diversity — founding team composition & FTE gender/ethnicity balance",
-        hint: "Diverse founding team; tracks and reports gender & ethnicity across FTEs",
-        hasInput: true, inputPlaceholder: "Notes on team diversity (e.g. % women, underrepresented founders…)"
-      }
+      { label: "Team diversity — founding team composition & FTE gender/ethnicity balance", hint: "Diverse founding team; tracks and reports gender & ethnicity across FTEs", hasInput: true, inputPlaceholder: "Notes on team diversity (e.g. % women, underrepresented founders…)" }
     ]
   },
   {
     id: "customer", name: "Customer impact", weight: 25,
     color: "#9B2335", fillColor: "#DC2626",
     criteria: [
-      {
-        label: "Quantified customer outcomes — hours saved, productivity gains, revenue impact",
-        hint: "Concrete metrics: time decrease %, $ revenue impact, productivity improvement",
-        hasInput: true, inputPlaceholder: "e.g. avg 4 hrs/week saved per user, $12K revenue impact per customer…"
-      },
+      { label: "Quantified customer outcomes — hours saved, productivity gains, revenue impact", hint: "Concrete metrics: time decrease %, $ revenue impact, productivity improvement", hasInput: true, inputPlaceholder: "e.g. avg 4 hrs/week saved per user, $12K revenue impact per customer…" },
       { label: "Customers in underserved or high-need segments", hint: "SMBs, nonprofits, healthcare, education, government" },
       { label: "Low / no harmful externalities or dark patterns", hint: "Pricing transparency, no addictive engagement mechanics" },
       { label: "Human review mechanisms & auditability / explainability", hint: "Users can understand, contest, and override AI-driven decisions" }
     ]
   },
   {
-    id: "governance", name: "Governance & transparency", weight: 15,
+    id: "governance", name: "Governance & transparency", weight: 20,
     color: "#1E3A5F", fillColor: "#2563EB",
     criteria: [
       { label: "Clear impact metrics tracked and shared with investors", hint: "At least annual cadence" },
       { label: "Responsible data practices & privacy policy", hint: "GDPR/CCPA compliant, no data selling" },
       { label: "Model monitoring & ongoing AI risk management", hint: "Active monitoring for model drift, bias, and unintended outputs" }
-    ]
-  },
-  {
-    id: "acadian", name: "Acadian contribution", weight: 15,
-    color: "#92400E", fillColor: "#D97706",
-    criteria: [
-      {
-        label: "Capital deployed",
-        hint: "Total capital committed by Acadian Ventures",
-        hasInput: true, inputPlaceholder: "e.g. $500K seed, $1.2M follow-on…"
-      },
-      {
-        label: "Founder support provided",
-        hint: "Recruiting, strategy, ops, fundraising support given by the team",
-        hasInput: true, inputPlaceholder: "e.g. hired CTO, intro'd 3 enterprise customers, led bridge round…"
-      },
-      {
-        label: "Customer introductions made",
-        hint: "Direct intros from Acadian network that converted or are in pipeline",
-        hasInput: true, inputPlaceholder: "e.g. 5 intros, 2 converted to paying customers ($80K ARR)…"
-      }
     ]
   }
 ];
@@ -286,7 +252,7 @@ const INVESTOR_COLORS = {
 let db = null;
 let companies = [];
 let activeId = null;
-let openCats = { mission: true, workforce: true, customer: true, governance: true, acadian: true };
+let openCats = { mission: true, workforce: true, customer: true, governance: true };
 
 async function init() {
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -404,7 +370,7 @@ function renderScorecard() {
     const criteriaHTML = cat.criteria.map((cr,i) => {
       const val=company.scores[`${cat.id}-${i}`]||0;
       const stars=[1,2,3].map(n=>`<button class="star-btn ${val>=n?'filled':''}" onclick="setScore('${cat.id}',${i},${n})">★</button>`).join('');
-      const noteVal = (company.notes[`${cat.id}-${i}`]||'').replace(/"/g,'&quot;');
+      const noteVal=(company.notes[`${cat.id}-${i}`]||'').replace(/"/g,'&quot;');
       const inputHTML = cr.hasInput ? `<div class="criterion-input-wrap">
         <div class="criterion-input-label">Notes / data</div>
         <textarea class="criterion-input" rows="2" placeholder="${cr.inputPlaceholder||''}" onchange="setNote('${cat.id}',${i},this.value)">${noteVal}</textarea>
