@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impact Scorecard — Acadian Ventures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F5F2ED; --surface: #FDFCFA; --surface2: #F0EDE7;
+    --border: #DDD9D0; --border-strong: #C8C3B8;
+    --text: #1A1916; --text-2: #6B6760; --text-3: #9B9890;
+    --accent: #2D6A4F; --accent-light: #E8F4EE; --accent-mid: #52B788;
+    --coral: #9B2335; --gold: #92400E;
+    --radius: 12px; --radius-sm: 6px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+  .app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-header { padding: 28px 24px 20px; border-bottom: 1px solid var(--border); }
+  .logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 500; color: var(--text); letter-spacing: -0.3px; margin-bottom: 4px; }
+  .logo span { color: var(--accent); font-style: italic; }
+  .logo-sub { font-size: 11px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .sync-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--accent); background: var(--accent-light); border-radius: 20px; padding: 3px 9px; margin-top: 8px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-mid); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sidebar-section { padding: 16px 16px 8px; }
+  .sidebar-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); font-family: 'DM Mono', monospace; padding: 0 8px; margin-bottom: 6px; }
+  .add-btn { width: 100%; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s; margin-bottom: 12px; }
+  .add-btn:hover { background: #245c43; }
+  .company-item { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+  .company-item:hover { background: var(--surface2); }
+  .company-item.active { background: var(--accent-light); border-color: #B7DFCC; }
+  .company-avatar { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; font-family: 'DM Mono', monospace; flex-shrink: 0; }
+  .company-info { flex: 1; min-width: 0; }
+  .company-name-sidebar { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .company-score-sidebar { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+  .company-del { opacity: 0; background: none; border: none; cursor: pointer; color: var(--text-3); font-size: 16px; padding: 2px 4px; border-radius: 4px; line-height: 1; transition: opacity 0.15s, color 0.15s; }
+  .company-item:hover .company-del { opacity: 1; }
+  .company-del:hover { color: var(--coral); }
+  .main { overflow-y: auto; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; padding: 40px; }
+  .empty-icon { font-size: 48px; margin-bottom: 20px; opacity: 0.3; }
+  .empty-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; color: var(--text); margin-bottom: 8px; }
+  .empty-sub { color: var(--text-2); font-size: 14px; max-width: 300px; line-height: 1.7; }
+  .scorecard { max-width: 760px; margin: 0 auto; padding: 40px 40px 80px; }
+  .scorecard-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; gap: 20px; }
+  .company-name-input { font-family: 'Fraunces', serif; font-size: 32px; font-weight: 300; color: var(--text); background: none; border: none; border-bottom: 1.5px solid transparent; outline: none; width: 100%; letter-spacing: -0.5px; transition: border-color 0.15s; padding-bottom: 4px; }
+  .company-name-input:focus { border-bottom-color: var(--accent-mid); }
+  .company-name-input::placeholder { color: var(--text-3); }
+  .total-pill { display: flex; flex-direction: column; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 24px; min-width: 120px; text-align: center; flex-shrink: 0; }
+  .total-number { font-family: 'Fraunces', serif; font-size: 42px; font-weight: 500; line-height: 1; letter-spacing: -2px; transition: color 0.3s; }
+  .total-denom { font-size: 13px; color: var(--text-3); font-family: 'DM Mono', monospace; }
+  .total-grade { font-size: 11px; font-weight: 500; margin-top: 6px; font-family: 'DM Mono', monospace; letter-spacing: 0.05em; }
+  .progress-wrap { margin-bottom: 36px; }
+  .progress-track { height: 4px; background: var(--border); border-radius: 4px; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s; }
+  .progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); }
+  .cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s; }
+  .cat-card:hover { border-color: var(--border-strong); }
+  .cat-header { display: flex; align-items: center; padding: 16px 20px; gap: 14px; cursor: pointer; user-select: none; }
+  .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cat-label { font-size: 14px; font-weight: 500; flex: 1; }
+  .cat-weight-tag { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); margin-right: 12px; }
+  .cat-score-tag { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; min-width: 52px; text-align: right; }
+  .cat-chevron { color: var(--text-3); font-size: 16px; transition: transform 0.2s; margin-left: 4px; }
+  .cat-card.open .cat-chevron { transform: rotate(180deg); }
+  .cat-body { border-top: 1px solid var(--border); }
+  .cat-body.hidden { display: none; }
+  .criterion { display: flex; align-items: flex-start; padding: 14px 20px; gap: 16px; border-bottom: 1px solid var(--border); }
+  .criterion:last-child { border-bottom: none; }
+  .criterion-text { flex: 1; }
+  .criterion-label { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .criterion-hint { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .criterion-input-wrap { margin-top: 8px; }
+  .criterion-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); outline: none; transition: border-color 0.15s; resize: none; min-height: 32px; }
+  .criterion-input:focus { border-color: var(--accent-mid); }
+  .criterion-input::placeholder { color: var(--text-3); }
+  .criterion-input-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+  .stars { display: flex; gap: 5px; flex-shrink: 0; padding-top: 2px; }
+  .star-btn { background: none; border: none; cursor: pointer; font-size: 20px; line-height: 1; color: var(--border-strong); transition: color 0.1s, transform 0.1s; padding: 0 1px; }
+  .star-btn:hover { transform: scale(1.2); }
+  .star-btn.filled { color: #F59E0B; }
+  .cat-mini-bar { height: 3px; background: var(--surface2); }
+  .cat-mini-fill { height: 100%; transition: width 0.3s ease; }
+  .lead-investor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; }
+  .lead-investor-inner { padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+  .lead-investor-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .lead-investor-label { font-size: 14px; font-weight: 500; flex: 1; }
+  .lead-investor-select { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); cursor: pointer; outline: none; }
+  .investor-pill { display: inline-flex; align-items: center; font-size: 12px; font-family: 'DM Mono', monospace; font-weight: 500; padding: 4px 12px; border-radius: 20px; margin-left: 8px; }
+  .actions { display: flex; gap: 10px; margin-top: 28px; }
+  .btn { padding: 10px 20px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 7px; }
+  .btn-primary { background: var(--accent); color: white; border: none; }
+  .btn-primary:hover { background: #245c43; }
+  .btn-ghost { background: none; color: var(--text-2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border-strong); }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(26,25,22,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-backdrop.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 420px; animation: modalIn 0.18s ease; }
+  @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+  .modal-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; margin-bottom: 6px; }
+  .modal-sub { font-size: 13px; color: var(--text-2); margin-bottom: 20px; }
+  .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.15s; margin-bottom: 8px; }
+  .modal-input:focus { border-color: var(--accent-mid); }
+  .modal-select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text); outline: none; margin-bottom: 8px; cursor: pointer; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .export-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; color: var(--text-2); white-space: pre-wrap; max-height: 320px; overflow-y: auto; margin-bottom: 16px; }
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .summary-card-label { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--text-3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px; }
+  .summary-card-val { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 500; }
+  .summary-card-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+  .scorer-tag { font-size: 11px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-top: 3px; }
+  .scorer-tag span { color: var(--accent); }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: white; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: none; }
+  .loading-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: var(--text-3); }
+</style>
+</head>
+<body>
+
+<div id="loading-screen" class="loading-screen">Connecting…</div>
+
+<div id="app-root" style="display:none;">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">Impact<span>Score</span></div>
+        <div class="logo-sub">Acadian Ventures</div>
+        <div class="sync-badge"><div class="sync-dot"></div>Live · shared</div>
+      </div>
+      <div class="sidebar-section">
+        <button class="add-btn" onclick="openAddModal()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add company
+        </button>
+        <div class="sidebar-label">Companies</div>
+        <div id="company-list"></div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">◎</div>
+        <div class="empty-title">No companies yet</div>
+        <div class="empty-sub">Add your first portfolio company. Your whole team will see it instantly.</div>
+      </div>
+      <div class="scorecard" id="scorecard-view" style="display:none;"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-backdrop hidden" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add company</div>
+    <div class="modal-sub">Visible to your whole team in real time.</div>
+    <input class="modal-input" id="new-company-name" placeholder="Company name" maxlength="60" />
+    <select class="modal-select" id="new-company-stage">
+      <option value="">Stage (optional)</option>
+      <option>Pre-seed</option><option>Seed</option><option>Series A</option>
+      <option>Series B</option><option>Series C+</option><option>Growth</option>
+    </select>
+    <select class="modal-select" id="new-company-year">
+      <option value="">Scoring year (optional)</option>
+      <option>2022</option><option>2023</option><option>2024</option>
+      <option selected>2025</option><option>2026</option><option>2027</option>
+    </select>
+    <select class="modal-select" id="new-company-investor">
+      <option value="">Lead investor</option>
+      <option value="Audrey">Audrey</option>
+      <option value="Thomas">Thomas</option>
+      <option value="Jason">Jason</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addCompany()">Add company</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-backdrop hidden" id="export-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title">Export scorecard</div>
+    <div class="modal-sub">Copy this summary for your impact report.</div>
+    <div class="export-box" id="export-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeExportModal()">Close</button>
+      <button class="btn btn-primary" onclick="copyExport()">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://wpyvpohjdjqvpuvaedqn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_zEY_CTwpIAunwg0maKsIKw_wg3svbPm';
+
+const CATS = [
+  {
+    id: "mission", name: "Mission alignment", weight: 30,
+    color: "#2D6A4F", fillColor: "#52B788",
+    criteria: [
+      { label: "Impact is embedded in the business model, not a side program", hint: "Revenue growth = impact growth" },
+      { label: "Founder(s) have explicit mission-driven thesis and track record", hint: "" },
+      { label: "Product addresses a clearly defined social or environmental problem", hint: "Problem is well scoped, evidence-based, and material" }
+    ]
+  },
+  {
+    id: "workforce", name: "Workforce & culture", weight: 25,
+    color: "#4A1D96", fillColor: "#7C3AED",
+    criteria: [
+      { label: "Responsible AI practices — fairness, transparency & bias mitigation", hint: "Explainability, bias audits, ethical review process in place" },
+      { label: "Fair compensation & equity access for all employees", hint: "Includes early employees, not just executives" },
+      { label: "Employee satisfaction / retention above industry average", hint: "eNPS, Glassdoor score, or internal pulse data" },
+      { label: "Team diversity — founding team composition & FTE gender/ethnicity balance", hint: "Diverse founding team; tracks and reports gender & ethnicity across FTEs", hasInput: true, inputPlaceholder: "Notes on team diversity (e.g. % women, underrepresented founders…)" }
+    ]
+  },
+  {
+    id: "customer", name: "Customer impact", weight: 25,
+    color: "#9B2335", fillColor: "#DC2626",
+    criteria: [
+      { label: "Quantified customer outcomes — hours saved, productivity gains, revenue impact", hint: "Concrete metrics: time decrease %, $ revenue impact, productivity improvement", hasInput: true, inputPlaceholder: "e.g. avg 4 hrs/week saved per user, $12K revenue impact per customer…" },
+      { label: "Customers in underserved or high-need segments", hint: "SMBs, nonprofits, healthcare, education, government" },
+      { label: "Low / no harmful externalities or dark patterns", hint: "Pricing transparency, no addictive engagement mechanics" },
+      { label: "Human review mechanisms & auditability / explainability", hint: "Users can understand, contest, and override AI-driven decisions" }
+    ]
+  },
+  {
+    id: "governance", name: "Governance & transparency", weight: 20,
+    color: "#1E3A5F", fillColor: "#2563EB",
+    criteria: [
+      { label: "Clear impact metrics tracked and shared with investors", hint: "At least annual cadence" },
+      { label: "Responsible data practices & privacy policy", hint: "GDPR/CCPA compliant, no data selling" },
+      { label: "Model monitoring & ongoing AI risk management", hint: "Active monitoring for model drift, bias, and unintended outputs" }
+    ]
+  }
+];
+
+// Seed data — all 29 portfolio companies with their known total scores
+// Stars are distributed proportionally across criteria to match the total score
+const SEED_COMPANIES = [
+  { name: "Arist",        score: 80, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Nomi Health",  score: 79, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "BrioHR",       score: 85, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Compa",        score: 91, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Holivia",      score: 66, stage: "Seed",      year: "2025", leadInvestor: "Jason"  },
+  { name: "Worky",        score: 79, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Copyleaks",    score: 69, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Linc",         score: 70, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "squarepeg",    score: 76, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "datascalehr",  score: 60, stage: "Seed",      year: "2025", leadInvestor: ""       },
+  { name: "pack",         score: 74, stage: "",          year: "2025", leadInvestor: "Thomas" },
+  { name: "peoplereign",  score: 75, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "techwolf",     score: 89, stage: "",          year: "2025", leadInvestor: "Thomas" },
+  { name: "Gradient",     score: 64, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Superthread",  score: 40, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "Jodie",        score: 36, stage: "Seed",      year: "2025", leadInvestor: "Jason"  },
+  { name: "Match2",       score: 38, stage: "Pre-seed",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Palm HR",      score: 59, stage: "",          year: "2025", leadInvestor: ""       },
+  { name: "Oyster",       score: 86, stage: "Series C+", year: "2025", leadInvestor: "Jason"  },
+  { name: "Palette",      score: 64, stage: "Pre-seed",  year: "2025", leadInvestor: "Thomas" },
+  { name: "Origin",       score: 85, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "workpay",      score: 87, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "AG5",          score: 71, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "Penzilla",     score: 83, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "Colare",       score: 57, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Narrative",    score: 62, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Jolly",        score: 73, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Kombo",        score: 57, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Figures",      score: 83, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+];
+
+// Distribute stars to approximate the target total score
+function buildScoresFromTotal(targetScore) {
+  const scores = {};
+  const notes = {};
+  // Total max stars = (3+4+4+3) criteria * 3 stars = 42 stars max → maps to 100 pts
+  // We'll distribute stars proportionally
+  const allKeys = [];
+  CATS.forEach(cat => cat.criteria.forEach((cr, i) => {
+    allKeys.push({ cat: cat.id, idx: i });
+    if (cr.hasInput) notes[`${cat.id}-${i}`] = '';
+  }));
+
+  // Start with proportional fill
+  const ratio = targetScore / 100;
+  // Assign stars per category weighted by category weight
+  CATS.forEach(cat => {
+    const catRatio = ratio;
+    cat.criteria.forEach((cr, i) => {
+      // Assign 1, 2, or 3 stars based on ratio
+      let stars;
+      if (catRatio >= 0.9) stars = 3;
+      else if (catRatio >= 0.65) stars = 2;
+      else if (catRatio >= 0.35) stars = 1;
+      else stars = 0;
+      scores[`${cat.id}-${i}`] = stars;
+    });
+  });
+
+  // Fine-tune: calculate actual score and adjust
+  let attempts = 0;
+  while (attempts < 20) {
+    const actual = calcScoreFromScores(scores);
+    const diff = targetScore - actual;
+    if (Math.abs(diff) <= 2) break;
+    // Find a criterion to nudge
+    const keys = Object.keys(scores);
+    if (diff > 0) {
+      // Need to increase — find one that's not at max
+      for (const k of keys) {
+        if (scores[k] < 3) { scores[k]++; break; }
+      }
+    } else {
+      // Need to decrease — find one that's not at min
+      for (const k of [...keys].reverse()) {
+        if (scores[k] > 0) { scores[k]--; break; }
+      }
+    }
+    attempts++;
+  }
+
+  return { scores, notes };
+}
+
+function calcScoreFromScores(scores) {
+  let total = 0;
+  CATS.forEach(cat => {
+    let raw = 0;
+    cat.criteria.forEach((_, i) => { raw += scores[`${cat.id}-${i}`] || 0; });
+    total += Math.round((raw / (cat.criteria.length * 3)) * cat.weight);
+  });
+  return total;
+}
+
+const INVESTOR_COLORS = {
+  Audrey: { bg: '#EDE9FE', color: '#4A1D96' },
+  Thomas: { bg: '#EFF6FF', color: '#1E3A5F' },
+  Jason:  { bg: '#E8F4EE', color: '#2D6A4F' }
+};
+
+let db = null;
+let companies = [];
+let activeId = null;
+let openCats = { mission: true, workforce: true, customer: true, governance: true };
+
+async function init() {
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await loadCompanies();
+
+  // If database is empty, seed with all portfolio companies
+  if (companies.length === 0) {
+    await seedCompanies();
+  }
+
+  subscribeRealtime();
+  if (companies.length > 0) activeId = companies[0].id;
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app-root').style.display = 'block';
+  render();
+}
+
+async function seedCompanies() {
+  showToast('Loading portfolio companies…');
+  for (const seed of SEED_COMPANIES) {
+    const { scores, notes } = buildScoresFromTotal(seed.score);
+    const c = {
+      id: (Date.now() + Math.random()).toString().replace('.',''),
+      name: seed.name,
+      stage: seed.stage,
+      year: seed.year,
+      leadInvestor: seed.leadInvestor,
+      scores,
+      notes,
+      lastScoredBy: 'Team',
+      updatedAt: Date.now()
+    };
+    companies.push(c);
+    await upsertCompany(c);
+    await new Promise(r => setTimeout(r, 50)); // small delay to avoid rate limiting
+  }
+  showToast('Portfolio loaded ✓');
+}
+
+async function loadCompanies() {
+  const { data, error } = await db.from('companies').select('*').order('updated_at');
+  if (error) { showToast('Could not load: ' + error.message); return; }
+  companies = (data || []).map(r => r.data);
+}
+
+async function upsertCompany(company) {
+  const { error } = await db.from('companies').upsert({ id: company.id, data: company, updated_at: new Date().toISOString() });
+  if (error) showToast('Save error: ' + error.message);
+}
+
+async function removeCompany(id) {
+  const { error } = await db.from('companies').delete().eq('id', id);
+  if (error) showToast('Delete error: ' + error.message);
+}
+
+function subscribeRealtime() {
+  db.channel('companies-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'companies' }, payload => {
+      if (payload.eventType === 'DELETE') {
+        companies = companies.filter(c => c.id !== payload.old.id);
+        if (activeId === payload.old.id) activeId = companies.length ? companies[companies.length-1].id : null;
+        showToast('A company was removed ↺');
+      } else {
+        const incoming = payload.new.data;
+        const idx = companies.findIndex(c => c.id === incoming.id);
+        if (idx >= 0) companies[idx] = incoming; else companies.push(incoming);
+        showToast('Updated by teammate ↺');
+      }
+      render();
+    }).subscribe();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function getCompany(id) { return companies.find(c => c.id === id); }
+
+function initCompany(name, stage, year, investor) {
+  const scores = {}; const notes = {};
+  CATS.forEach(cat => cat.criteria.forEach((cr, i) => {
+    scores[`${cat.id}-${i}`] = 0;
+    if (cr.hasInput) notes[`${cat.id}-${i}`] = '';
+  }));
+  return { id: Date.now().toString(), name, stage: stage||'', year: year||'', leadInvestor: investor||'', scores, notes, lastScoredBy: 'Team', updatedAt: Date.now() };
+}
+
+function avatarInitials(name) { return name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join(''); }
+const AVATAR_COLORS = [['#E8F4EE','#2D6A4F'],['#EDE9FE','#4A1D96'],['#FEE2E2','#9B2335'],['#EFF6FF','#1E3A5F'],['#FEF3C7','#92400E'],['#F0FDF4','#14532D']];
+function avatarColor(name) { let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length; return AVATAR_COLORS[Math.abs(h)]; }
+
+function calcScore(company) {
+  let total = 0;
+  CATS.forEach(cat => { let raw=0; cat.criteria.forEach((_,i)=>{ raw+=company.scores[`${cat.id}-${i}`]||0; }); total+=Math.round((raw/(cat.criteria.length*3))*cat.weight); });
+  return total;
+}
+function calcCatScore(company, cat) { let raw=0; cat.criteria.forEach((_,i)=>{ raw+=company.scores[`${cat.id}-${i}`]||0; }); return Math.round((raw/(cat.criteria.length*3))*cat.weight); }
+function gradeInfo(s) {
+  if(s>=80) return {label:'HIGH IMPACT',color:'#2D6A4F'};
+  if(s>=60) return {label:'MEANINGFUL',color:'#B45309'};
+  if(s>=40) return {label:'EMERGING',color:'#9B2335'};
+  if(s>0)   return {label:'DEVELOPING',color:'#6B6760'};
+  return {label:'UNSCORED',color:'#9B9890'};
+}
+function progressColor(s) { if(s>=80)return'#52B788'; if(s>=60)return'#F59E0B'; if(s>=40)return'#EF4444'; return'#C8C3B8'; }
+function timeAgo(ts) { if(!ts)return''; const d=Math.floor((Date.now()-ts)/1000); if(d<60)return'just now'; if(d<3600)return Math.floor(d/60)+'m ago'; if(d<86400)return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago'; }
+
+function renderSidebar() {
+  const list = document.getElementById('company-list');
+  if (!companies.length) { list.innerHTML='<div style="padding:12px 8px;font-size:12px;color:var(--text-3);">No companies yet.</div>'; return; }
+  list.innerHTML = companies.map(c => {
+    const score=calcScore(c); const [bg,fg]=avatarColor(c.name||'?');
+    const inv=c.leadInvestor?` · ${c.leadInvestor}`:'';
+    return `<div class="company-item ${c.id===activeId?'active':''}" onclick="selectCompany('${c.id}')">
+      <div class="company-avatar" style="background:${bg};color:${fg};">${avatarInitials(c.name||'?')}</div>
+      <div class="company-info">
+        <div class="company-name-sidebar">${c.name}</div>
+        <div class="company-score-sidebar">${score}/100 · ${c.stage||'No stage'}${inv}</div>
+      </div>
+      <button class="company-del" onclick="deleteCompany(event,'${c.id}')" title="Remove">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderScorecard() {
+  const company = getCompany(activeId); if(!company) return;
+  if (!company.notes) company.notes = {};
+  const score=calcScore(company); const grade=gradeInfo(score);
+
+  const summaryCards = CATS.map(cat => {
+    const cs=calcCatScore(company,cat);
+    return `<div class="summary-card">
+      <div class="summary-card-label">${cat.name.split(' ')[0]}</div>
+      <div class="summary-card-val" style="color:${cat.color};">${cs}</div>
+      <div class="summary-card-sub">of ${cat.weight} pts</div>
+    </div>`;
+  }).join('');
+
+  const catCards = CATS.map(cat => {
+    const cs=calcCatScore(company,cat); const pctFill=Math.round((cs/cat.weight)*100); const isOpen=openCats[cat.id];
+    const criteriaHTML = cat.criteria.map((cr,i) => {
+      const val=company.scores[`${cat.id}-${i}`]||0;
+      const stars=[1,2,3].map(n=>`<button class="star-btn ${val>=n?'filled':''}" onclick="setScore('${cat.id}',${i},${n})">★</button>`).join('');
+      const noteVal=(company.notes[`${cat.id}-${i}`]||'').replace(/"/g,'&quot;');
+      const inputHTML = cr.hasInput ? `<div class="criterion-input-wrap">
+        <div class="criterion-input-label">Notes / data</div>
+        <textarea class="criterion-input" rows="2" placeholder="${cr.inputPlaceholder||''}" onchange="setNote('${cat.id}',${i},this.value)">${noteVal}</textarea>
+      </div>` : '';
+      return `<div class="criterion">
+        <div class="criterion-text">
+          <div class="criterion-label">${cr.label}</div>
+          ${cr.hint?`<div class="criterion-hint">${cr.hint}</div>`:''}
+          ${inputHTML}
+        </div>
+        <div class="stars">${stars}</div>
+      </div>`;
+    }).join('');
+    return `<div class="cat-card ${isOpen?'open':''}" id="cat-${cat.id}">
+      <div class="cat-mini-bar"><div class="cat-mini-fill" style="width:${pctFill}%;background:${cat.fillColor};"></div></div>
+      <div class="cat-header" onclick="toggleCat('${cat.id}')">
+        <div class="cat-dot" style="background:${cat.color};"></div>
+        <div class="cat-label">${cat.name}</div>
+        <div class="cat-weight-tag">${cat.weight} PTS</div>
+        <div class="cat-score-tag" style="color:${cat.color};">${cs} / ${cat.weight}</div>
+        <span class="cat-chevron">▾</span>
+      </div>
+      <div class="cat-body ${isOpen?'':'hidden'}" id="cat-body-${cat.id}">${criteriaHTML}</div>
+    </div>`;
+  }).join('');
+
+  const invOptions=['','Audrey','Thomas','Jason'].map(v=>`<option value="${v}" ${company.leadInvestor===v?'selected':''}>${v||'Unassigned'}</option>`).join('');
+  const invStyle=company.leadInvestor&&INVESTOR_COLORS[company.leadInvestor]?`background:${INVESTOR_COLORS[company.leadInvestor].bg};color:${INVESTOR_COLORS[company.leadInvestor].color};`:'background:var(--surface2);color:var(--text-2);';
+
+  document.getElementById('scorecard-view').innerHTML = `
+    <div class="scorecard-top">
+      <div style="flex:1;min-width:0;">
+        <input class="company-name-input" value="${company.name}" placeholder="Company name" onchange="updateName(this.value)" oninput="updateName(this.value)" />
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-3);margin-top:4px;">
+          <span>${company.stage||'No stage'}</span>
+          ${company.year?`<span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 8px;color:var(--text-2);">${company.year}</span>`:''}
+          <select onchange="updateYear(this.value)" style="font-size:11px;font-family:'DM Mono',monospace;background:none;border:none;color:var(--text-3);cursor:pointer;outline:none;">
+            <option value="">edit year</option>
+            ${['2022','2023','2024','2025','2026','2027'].map(y=>`<option ${company.year===y?'selected':''}>${y}</option>`).join('')}
+          </select>
+        </div>
+        <div class="scorer-tag">Last updated by <span>${company.lastScoredBy||'team'}</span> · ${timeAgo(company.updatedAt)}</div>
+      </div>
+      <div class="total-pill">
+        <div class="total-number" style="color:${grade.color};">${score}</div>
+        <div class="total-denom">/ 100</div>
+        <div class="total-grade" style="color:${grade.color};">${grade.label}</div>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:${score}%;background:${progressColor(score)};"></div></div>
+      <div class="progress-labels"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    </div>
+    <div class="summary-row">${summaryCards}</div>
+    <div class="divider"></div>
+    <div class="lead-investor-card">
+      <div class="lead-investor-inner">
+        <div class="lead-investor-dot"></div>
+        <div class="lead-investor-label">Lead investor</div>
+        ${company.leadInvestor?`<span class="investor-pill" style="${invStyle}">${company.leadInvestor}</span>`:''}
+        <select class="lead-investor-select" onchange="updateInvestor(this.value)">${invOptions}</select>
+      </div>
+    </div>
+    ${catCards}
+    <div class="actions">
+      <button class="btn btn-primary" onclick="openExport()">Export report ↗</button>
+      <button class="btn btn-ghost" onclick="resetScores()">Reset scores</button>
+    </div>`;
+}
+
+function render() {
+  const hasActive = activeId && getCompany(activeId);
+  document.getElementById('empty-state').style.display = hasActive?'none':'flex';
+  document.getElementById('scorecard-view').style.display = hasActive?'block':'none';
+  renderSidebar(); if(hasActive) renderScorecard();
+}
+
+function selectCompany(id) { activeId=id; render(); }
+function openAddModal() {
+  document.getElementById('add-modal').classList.remove('hidden');
+  ['new-company-name','new-company-stage','new-company-investor'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('new-company-year').value='2025';
+  setTimeout(()=>document.getElementById('new-company-name').focus(),50);
+}
+function closeAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
+
+async function addCompany() {
+  const name=document.getElementById('new-company-name').value.trim();
+  if(!name){document.getElementById('new-company-name').focus();return;}
+  const c=initCompany(name,document.getElementById('new-company-stage').value,document.getElementById('new-company-year').value,document.getElementById('new-company-investor').value);
+  companies.push(c); activeId=c.id;
+  closeAddModal(); render();
+  await upsertCompany(c); showToast('Company added ✓');
+}
+
+async function deleteCompany(e,id) {
+  e.stopPropagation();
+  companies=companies.filter(c=>c.id!==id);
+  if(activeId===id) activeId=companies.length?companies[companies.length-1].id:null;
+  render(); await removeCompany(id); showToast('Company removed');
+}
+
+let nameTimer=null;
+function updateName(val) {
+  const c=getCompany(activeId); if(!c)return;
+  c.name=val; c.updatedAt=Date.now(); renderSidebar();
+  clearTimeout(nameTimer); nameTimer=setTimeout(()=>upsertCompany(c),800);
+}
+async function updateYear(val) { const c=getCompany(activeId); if(!c)return; c.year=val; await upsertCompany(c); renderScorecard(); renderSidebar(); }
+async function updateInvestor(val) { const c=getCompany(activeId); if(!c)return; c.leadInvestor=val; c.updatedAt=Date.now(); await upsertCompany(c); renderScorecard(); renderSidebar(); showToast('Lead investor updated ✓'); }
+
+async function setScore(catId,idx,val) {
+  const c=getCompany(activeId); if(!c)return;
+  const key=`${catId}-${idx}`; c.scores[key]=c.scores[key]===val?0:val;
+  c.lastScoredBy='Team'; c.updatedAt=Date.now();
+  renderScorecard(); renderSidebar(); await upsertCompany(c); showToast('Score saved ✓');
+}
+
+let noteTimers={};
+function setNote(catId,idx,val) {
+  const c=getCompany(activeId); if(!c)return;
+  if(!c.notes) c.notes={};
+  c.notes[`${catId}-${idx}`]=val; c.updatedAt=Date.now();
+  const key=`${catId}-${idx}`;
+  clearTimeout(noteTimers[key]);
+  noteTimers[key]=setTimeout(()=>{ upsertCompany(c); showToast('Note saved ✓'); },1000);
+}
+
+function toggleCat(catId) {
+  openCats[catId]=!openCats[catId];
+  document.getElementById(`cat-${catId}`).classList.toggle('open',openCats[catId]);
+  document.getElementById(`cat-body-${catId}`).classList.toggle('hidden',!openCats[catId]);
+}
+
+async function resetScores() {
+  if(!confirm('Reset all scores for this company?'))return;
+  const c=getCompany(activeId);
+  CATS.forEach(cat=>cat.criteria.forEach((_,i)=>{c.scores[`${cat.id}-${i}`]=0;}));
+  c.updatedAt=Date.now(); render(); await upsertCompany(c); showToast('Scores reset');
+}
+
+function openExport() {
+  const c=getCompany(activeId); const score=calcScore(c); const grade=gradeInfo(score);
+  let lines=['IMPACT SCORECARD — ACADIAN VENTURES','━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    `Company:       ${c.name}`,`Stage:         ${c.stage||'N/A'}`,
+    `Year:          ${c.year||'N/A'}`,`Lead investor: ${c.leadInvestor||'N/A'}`,
+    `Total Score:   ${score}/100 — ${grade.label}`,``];
+  CATS.forEach(cat=>{
+    lines.push(`${cat.name.toUpperCase()}: ${calcCatScore(c,cat)}/${cat.weight}`);
+    cat.criteria.forEach((cr,i)=>{
+      const s=c.scores[`${cat.id}-${i}`]||0;
+      lines.push(`  ${'★'.repeat(s)}${'☆'.repeat(3-s)}  ${cr.label}`);
+      if(cr.hasInput && c.notes && c.notes[`${cat.id}-${i}`]) lines.push(`      → ${c.notes[`${cat.id}-${i}`]}`);
+    });
+    lines.push('');
+  });
+  document.getElementById('export-content').textContent=lines.join('\n');
+  document.getElementById('export-modal').classList.remove('hidden');
+}
+function closeExportModal(){document.getElementById('export-modal').classList.add('hidden');}
+function copyExport(){navigator.clipboard.writeText(document.getElementById('export-content').textContent);const btn=document.querySelector('#export-modal .btn-primary');btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy to clipboard',1800);}
+
+document.getElementById('add-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAddModal();});
+document.getElementById('export-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeExportModal();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeAddModal();closeExportModal();}
+  if(e.key==='Enter'&&!document.getElementById('add-modal').classList.contains('hidden'))addCompany();
+});
+
+init();
+</script>
+</body>
+</html>
