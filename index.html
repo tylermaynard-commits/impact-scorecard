@@ -243,6 +243,103 @@ const CATS = [
   }
 ];
 
+// Seed data — all 29 portfolio companies with their known total scores
+// Stars are distributed proportionally across criteria to match the total score
+const SEED_COMPANIES = [
+  { name: "Arist",        score: 80, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Nomi Health",  score: 79, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "BrioHR",       score: 85, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Compa",        score: 91, stage: "Series B",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Holivia",      score: 66, stage: "Seed",      year: "2025", leadInvestor: "Jason"  },
+  { name: "Worky",        score: 79, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Copyleaks",    score: 69, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Linc",         score: 70, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "squarepeg",    score: 76, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "datascalehr",  score: 60, stage: "Seed",      year: "2025", leadInvestor: ""       },
+  { name: "pack",         score: 74, stage: "",          year: "2025", leadInvestor: "Thomas" },
+  { name: "peoplereign",  score: 75, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "techwolf",     score: 89, stage: "",          year: "2025", leadInvestor: "Thomas" },
+  { name: "Gradient",     score: 64, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Superthread",  score: 40, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "Jodie",        score: 36, stage: "Seed",      year: "2025", leadInvestor: "Jason"  },
+  { name: "Match2",       score: 38, stage: "Pre-seed",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Palm HR",      score: 59, stage: "",          year: "2025", leadInvestor: ""       },
+  { name: "Oyster",       score: 86, stage: "Series C+", year: "2025", leadInvestor: "Jason"  },
+  { name: "Palette",      score: 64, stage: "Pre-seed",  year: "2025", leadInvestor: "Thomas" },
+  { name: "Origin",       score: 85, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "workpay",      score: 87, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "AG5",          score: 71, stage: "Series A",  year: "2025", leadInvestor: "Thomas" },
+  { name: "Penzilla",     score: 83, stage: "Seed",      year: "2025", leadInvestor: "Thomas" },
+  { name: "Colare",       score: 57, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Narrative",    score: 62, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+  { name: "Jolly",        score: 73, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Kombo",        score: 57, stage: "Series A",  year: "2025", leadInvestor: "Jason"  },
+  { name: "Figures",      score: 83, stage: "Pre-seed",  year: "2025", leadInvestor: "Audrey" },
+];
+
+// Distribute stars to approximate the target total score
+function buildScoresFromTotal(targetScore) {
+  const scores = {};
+  const notes = {};
+  // Total max stars = (3+4+4+3) criteria * 3 stars = 42 stars max → maps to 100 pts
+  // We'll distribute stars proportionally
+  const allKeys = [];
+  CATS.forEach(cat => cat.criteria.forEach((cr, i) => {
+    allKeys.push({ cat: cat.id, idx: i });
+    if (cr.hasInput) notes[`${cat.id}-${i}`] = '';
+  }));
+
+  // Start with proportional fill
+  const ratio = targetScore / 100;
+  // Assign stars per category weighted by category weight
+  CATS.forEach(cat => {
+    const catRatio = ratio;
+    cat.criteria.forEach((cr, i) => {
+      // Assign 1, 2, or 3 stars based on ratio
+      let stars;
+      if (catRatio >= 0.9) stars = 3;
+      else if (catRatio >= 0.65) stars = 2;
+      else if (catRatio >= 0.35) stars = 1;
+      else stars = 0;
+      scores[`${cat.id}-${i}`] = stars;
+    });
+  });
+
+  // Fine-tune: calculate actual score and adjust
+  let attempts = 0;
+  while (attempts < 20) {
+    const actual = calcScoreFromScores(scores);
+    const diff = targetScore - actual;
+    if (Math.abs(diff) <= 2) break;
+    // Find a criterion to nudge
+    const keys = Object.keys(scores);
+    if (diff > 0) {
+      // Need to increase — find one that's not at max
+      for (const k of keys) {
+        if (scores[k] < 3) { scores[k]++; break; }
+      }
+    } else {
+      // Need to decrease — find one that's not at min
+      for (const k of [...keys].reverse()) {
+        if (scores[k] > 0) { scores[k]--; break; }
+      }
+    }
+    attempts++;
+  }
+
+  return { scores, notes };
+}
+
+function calcScoreFromScores(scores) {
+  let total = 0;
+  CATS.forEach(cat => {
+    let raw = 0;
+    cat.criteria.forEach((_, i) => { raw += scores[`${cat.id}-${i}`] || 0; });
+    total += Math.round((raw / (cat.criteria.length * 3)) * cat.weight);
+  });
+  return total;
+}
+
 const INVESTOR_COLORS = {
   Audrey: { bg: '#EDE9FE', color: '#4A1D96' },
   Thomas: { bg: '#EFF6FF', color: '#1E3A5F' },
@@ -257,11 +354,39 @@ let openCats = { mission: true, workforce: true, customer: true, governance: tru
 async function init() {
   db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   await loadCompanies();
+
+  // If database is empty, seed with all portfolio companies
+  if (companies.length === 0) {
+    await seedCompanies();
+  }
+
   subscribeRealtime();
-  if (companies.length > 0) activeId = companies[companies.length - 1].id;
+  if (companies.length > 0) activeId = companies[0].id;
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app-root').style.display = 'block';
   render();
+}
+
+async function seedCompanies() {
+  showToast('Loading portfolio companies…');
+  for (const seed of SEED_COMPANIES) {
+    const { scores, notes } = buildScoresFromTotal(seed.score);
+    const c = {
+      id: (Date.now() + Math.random()).toString().replace('.',''),
+      name: seed.name,
+      stage: seed.stage,
+      year: seed.year,
+      leadInvestor: seed.leadInvestor,
+      scores,
+      notes,
+      lastScoredBy: 'Team',
+      updatedAt: Date.now()
+    };
+    companies.push(c);
+    await upsertCompany(c);
+    await new Promise(r => setTimeout(r, 50)); // small delay to avoid rate limiting
+  }
+  showToast('Portfolio loaded ✓');
 }
 
 async function loadCompanies() {
